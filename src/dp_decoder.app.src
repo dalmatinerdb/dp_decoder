@@ -1,0 +1,14 @@
+{application, dp_decoder,
+ [{description, "Collection of decoders for different metric protocols"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env,[]},
+  {modules, []},
+  {maintainers, ["Heinz N. Gies"]},
+  {licenses, ["MIT"]},
+  {links, [{"github"]}
+ ]}.
