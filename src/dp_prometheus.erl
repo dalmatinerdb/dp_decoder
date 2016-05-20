@@ -9,6 +9,10 @@
 
 -spec parse(In::binary()) ->
                    dp_decoder:metric().
+-define(POS_INF, 42.0e+100).
+-define(NEG_INF, -42.0e+100).
+-define(NAN, 0).
+
 parse(In) ->
     M = #{
       key => [],
@@ -30,7 +34,7 @@ parse_metric(<<"{", R/binary>>, Metric, M) ->
 parse_metric(<<" ", R/binary>>, Metric, M) ->
     M1 = M#{key := [Metric],
             metric := [Metric]},
-    parse_time(R, <<>>, M1);
+    parse_time(R, M1);
 parse_metric(<<C, R/binary>>, Tag, M) ->
     parse_metric(R, <<Tag/binary, C>>, M).
 
@@ -43,7 +47,7 @@ parse_tags(<<"} ", R/binary>>, Tag,
     Tags1 = lists:sort([{<<"">>, K, V} | Tags]),
     M1 = M#{key := Ks ++ dp_decoder:recombine_tags(Tags1),
             tags := Tags1},
-    parse_time(R, <<>>, M1);
+    parse_time(R, M1);
 
 parse_tags(<<",", R/binary>>, Tag, M = #{tags := Tags}) ->
     {K, V} = parse_tag(Tag, <<>>),
@@ -70,6 +74,16 @@ unescape(<<C, R/binary>>, V) ->
     unescape(R, <<V/binary, C>>).
 
 
+parse_time(<<"+Inf", R/binary>>, M) ->
+    parse_time(R, float_to_binary(?POS_INF), M);
+parse_time(<<"-Inf", R/binary>>, M) ->
+    parse_time(R, float_to_binary(?NEG_INF), M);
+parse_time(<<"NaN", R/binary>>, M) ->
+    parse_time(R, integer_to_binary(?NAN), M);
+parse_time(R, M) ->
+    parse_time(R, <<>>, M).
+
+
 parse_time(<<>>, V, M) ->
     Vi = dp_decoder:to_number(V),
     Ti = erlang:system_time(seconds),
@@ -85,7 +99,65 @@ parse_time(<<C, R/binary>>, V, M) ->
 
 
 -ifdef(TEST).
+nan_test() ->
+    In = <<"metric_without_timestamp_and_labels NaN 1395066363000">>,
+    Metric = [<<"metric_without_timestamp_and_labels">>],
+    Key = [<<"metric_without_timestamp_and_labels">>],
+    Tags = [],
+    Time = 1395066363,
+    Value = ?NAN,
+    #{
+       metric := RMetric,
+       key    := RKey,
+       tags   := RTags,
+       time   := RTime,
+       value  := RValue
+     } = parse(In),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Key, RKey),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Value, RValue).
 
+pos_inf_test() ->
+    In = <<"metric_without_timestamp_and_labels +Inf 1395066363000">>,
+    Metric = [<<"metric_without_timestamp_and_labels">>],
+    Key = [<<"metric_without_timestamp_and_labels">>],
+    Tags = [],
+    Time = 1395066363,
+    Value = ?POS_INF,
+    #{
+       metric := RMetric,
+       key    := RKey,
+       tags   := RTags,
+       time   := RTime,
+       value  := RValue
+     } = parse(In),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Key, RKey),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Value, RValue).
+
+neg_inf_test() ->
+    In = <<"metric_without_timestamp_and_labels -Inf 1395066363000">>,
+    Metric = [<<"metric_without_timestamp_and_labels">>],
+    Key = [<<"metric_without_timestamp_and_labels">>],
+    Tags = [],
+    Time = 1395066363,
+    Value = ?NEG_INF,
+    #{
+       metric := RMetric,
+       key    := RKey,
+       tags   := RTags,
+       time   := RTime,
+       value  := RValue
+     } = parse(In),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Key, RKey),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Value, RValue).
 example_test() ->
     In = <<"http_requests_total{method=\"post\",code=\"200\"} 1027 ",
            "1395066363000">>,
