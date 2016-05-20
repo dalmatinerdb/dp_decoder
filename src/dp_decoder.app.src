@@ -1,6 +1,6 @@
 {application,dp_decoder,
              [{description,"Collection of decoders for different metric protocols"},
-              {vsn,"0.2.0"},
+              {vsn,"0.2.1"},
               {registered,[]},
               {applications,[kernel,stdlib]},
               {env,[]},

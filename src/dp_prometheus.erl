@@ -12,6 +12,8 @@
 -define(POS_INF, 42.0e+100).
 -define(NEG_INF, -42.0e+100).
 -define(NAN, 0).
+parse(<<>>) ->
+    undefined;
 parse(<<" ", R/binary>>) ->
     parse(R);
 parse(<<$\t, R/binary>>) ->
