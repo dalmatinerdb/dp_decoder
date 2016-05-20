@@ -8,11 +8,16 @@
 -export([protocol/0, parse/1]).
 
 -spec parse(In::binary()) ->
-                   dp_decoder:metric().
+                   {ok, [dp_decoder:metric()]} | undefined.
 -define(POS_INF, 42.0e+100).
 -define(NEG_INF, -42.0e+100).
 -define(NAN, 0).
-
+parse(<<" ", R/binary>>) ->
+    parse(R);
+parse(<<$\t, R/binary>>) ->
+    parse(R);
+parse(<<"#", _/binary>>) ->
+    undefined;
 parse(In) ->
     M = #{
       key => [],
@@ -87,18 +92,22 @@ parse_time(R, M) ->
 parse_time(<<>>, V, M) ->
     Vi = dp_decoder:to_number(V),
     Ti = erlang:system_time(seconds),
-    M#{time := Ti, value := Vi};
+    {ok, [M#{time := Ti, value := Vi}]};
 
 parse_time(<<" ", T/binary>>, V, M) ->
     Vi = dp_decoder:to_number(V),
     Ti = binary_to_integer(T) div 1000,
-    M#{time := Ti, value := Vi};
+    {ok, [M#{time := Ti, value := Vi}]};
 
 parse_time(<<C, R/binary>>, V, M) ->
     parse_time(R, <<V/binary, C>>, M).
 
 
 -ifdef(TEST).
+p(In) ->
+    {ok, [E]} = parse(In),
+    E.
+
 nan_test() ->
     In = <<"metric_without_timestamp_and_labels NaN 1395066363000">>,
     Metric = [<<"metric_without_timestamp_and_labels">>],
@@ -112,7 +121,7 @@ nan_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -132,7 +141,7 @@ pos_inf_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -152,7 +161,7 @@ neg_inf_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -173,7 +182,7 @@ example_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -194,7 +203,7 @@ tailing_colon_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -214,7 +223,7 @@ minimal_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -243,7 +252,7 @@ escape_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
@@ -254,5 +263,3 @@ escape_test() ->
     ?assert(RTime - Time =< 1),
     ?assertEqual(Value, RValue).
 -endif.
-
-

@@ -8,7 +8,7 @@
 -export([protocol/0, parse/1]).
 
 -spec parse(In::binary()) ->
-                   dp_decoder:metric().
+                   {ok, [dp_decoder:metric()]} | undefined.
 parse(In) ->
     M = #{
       metric => [],
@@ -76,7 +76,7 @@ parse_metadata(<<C, R/binary>>, Tag, M) ->
     parse_metadata(R, <<Tag/binary, C>>, M).
 
 -spec parse_tag(binary(), binary()) ->
-                       {binary(), binary()}.
+                       {binary() | no_tag, binary()}.
 parse_tag(<<>>, K) ->
     {no_tag, K};
 parse_tag(<<"=", V/binary>>, K) ->
@@ -90,19 +90,22 @@ parse_time(<<" ", T/binary>>, V,
            M = #{key := Key, metric := Metric}) ->
     Vi = dp_decoder:to_number(V),
     Ti = binary_to_integer(T),
-    M#{time := Ti, value := Vi,
-       metric := case Metric of 
-                     [] -> [<<"metric">>];
-                     _ -> lists:reverse(Metric)
-                 end,
-       key := lists:reverse(Key)};
+    M1 = M#{time := Ti, value := Vi,
+            metric := case Metric of 
+                          [] -> [<<"metric">>];
+                          _ -> lists:reverse(Metric)
+                      end,
+            key := lists:reverse(Key)},
+    {ok, [M1]};
 
 parse_time(<<C, R/binary>>, V, M) ->
     parse_time(R, <<V/binary, C>>, M).
 
 
 -ifdef(TEST).
-
+p(In) ->
+    {ok, [E]} = parse(In),
+    E.
 metric2_test() ->
     In = <<"mountpoint=/srv/node/dfs3.what=disk_space.server=dfs4",
            ".target_type=gauge.type=used.unit=B..agent=diamond2",
@@ -126,7 +129,7 @@ metric2_test() ->
        tags := RTags,
        time := RTime,
        value := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
@@ -156,7 +159,7 @@ metric2_pfx_test() ->
        tags := RTags,
        time := RTime,
        value := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
@@ -176,7 +179,7 @@ normal_test() ->
        tags := RTags,
        time := RTime,
        value := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),

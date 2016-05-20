@@ -1,7 +1,7 @@
 	-module(dp_decoder).
 
--export([recombine_tags/1, to_number/1]).
--export_type([metric/0]).
+-export([recombine_tags/1, to_number/1, protocol/1, parse/2]).
+-export_type([metric/0, protocol/0]).
 
 -type metric() :: #{
               metric => [binary()],
@@ -14,7 +14,7 @@
 -type protocol() :: dp_line_proto.
 
 -callback parse(In::binary()) ->
-    dp_decoder:metric().
+    {ok, [dp_decoder:metric()]} | {error, term()} | undefined.
 
 -callback protocol() ->
     dp_decoder:protocol().
@@ -29,3 +29,13 @@ to_number(X) ->
         _:_ ->
             binary_to_integer(X)
     end.
+
+-spec parse(Decoder::module(), In::binary()) ->
+                   {ok, [dp_decoder:metric()]} | {error, term()} | undefined.
+parse(Decoder, In) ->
+    Decoder:parse(In).
+
+-spec protocol(Decoder :: module()) ->
+    dp_decoder:protocol().
+protocol(Decoder) ->
+    Decoder:protocol().

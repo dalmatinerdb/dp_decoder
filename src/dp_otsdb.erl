@@ -8,7 +8,7 @@
 -export([protocol/0, parse/1]).
 
 -spec parse(In::binary()) ->
-                   dp_decoder:metric().
+                   {ok, [dp_decoder:metric()]} | undefined.
 parse(<<"put ", In/binary>>) ->
     M = #{
       metric => [],
@@ -19,7 +19,7 @@ parse(<<"put ", In/binary>>) ->
      },
     parse_metric(In, <<>>, M).
 
--spec protocol() -> dp_line_proto.
+-spec protocol() -> dp_decoder:protocol().
 protocol() ->
     dp_line_proto.
 
@@ -60,8 +60,9 @@ parse_value(<<C, R/binary>>, Part, M) ->
 parse_tags(<<>>, Tag, M = #{tags := Tags, key := Ks}) ->
     {K, V} = parse_tag(Tag, <<>>),
     Tags1 = lists:sort([{<<"">>, K, V} | Tags]),
-    M#{key := Ks ++ dp_decoder:recombine_tags(Tags1),
-       tags := Tags1};
+    M1 = M#{key := Ks ++ dp_decoder:recombine_tags(Tags1),
+            tags := Tags1},
+    {ok, [M1]};
 
 parse_tags(<<" ", R/binary>>, Tag, M = #{tags := Tags}) ->
     {K, V} = parse_tag(Tag, <<>>),
@@ -77,7 +78,9 @@ parse_tag(<<C, R/binary>>, K) ->
     parse_tag(R, <<K/binary, C>>).
 
 -ifdef(TEST).
-
+p(In) ->
+    {ok, [E]} = parse(In),
+    E.
 example_test() ->
     In = <<"put sys.cpu.user 1356998400 42.5 host=webserver01 cpu=0">>,
     Metric = [<<"sys">>, <<"cpu">>, <<"user">>],
@@ -93,7 +96,7 @@ example_test() ->
        tags   := RTags,
        time   := RTime,
        value  := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),

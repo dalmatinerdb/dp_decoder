@@ -8,7 +8,7 @@
 -export([protocol/0, parse/1]).
 
 -spec parse(In::binary()) ->
-                   dp_decoder:metric().
+                   {ok, [dp_decoder:metric()]} | undefined.
 parse(In) ->
     M = #{
       metric => [<<"metric">>],
@@ -27,15 +27,16 @@ protocol() ->
                        db_decoder:metric().
 parse_key(<<" ", R/binary>>, Tag,
              M = #{key := Ms, tags := Tags}) ->
-    {K, V} = parse_tag(Tag, <<>>),
+    {K, V} =  parse_tag(Tag, <<>>),
     M1 = M#{tags := [{<<>>, K, V} | Tags],
             key := lists:sort([Tag | Ms])},
-    case R of
+  case R of
         <<" ", R1/binary>> ->
             parse_metadata(R1, <<>>, M1);
         _ ->
             parse_key(R, <<>>, M1)
     end;
+
 parse_key(<<C, R/binary>>, Tag, M) ->
     parse_key(R, <<Tag/binary, C>>, M).
 
@@ -61,20 +62,21 @@ parse_tag(<<"=", V/binary>>, K) ->
 parse_tag(<<C, R/binary>>, K) ->
     parse_tag(R, <<K/binary, C>>).
 
-
-
 -spec parse_time(binary(), binary(), db_decoder:metric()) ->
                             db_decoder:metric().
 parse_time(<<" ", T/binary>>, V, M) ->
     Vi = binary_to_integer(V),
     Ti = binary_to_integer(T),
-    M#{time := Ti, value := Vi};
+    {ok, [M#{time := Ti, value := Vi}]};
 
 parse_time(<<C, R/binary>>, V, M) ->
     parse_time(R, <<V/binary, C>>, M).
 
 
 -ifdef(TEST).
+p(In) ->
+    {ok, [E]} = parse(In),
+    E.
 
 example_test() ->
     In = <<"mountpoint=/srv/node/dfs3 what=disk_space server=dfs4",
@@ -99,7 +101,7 @@ example_test() ->
        tags := RTags,
        time := RTime,
        value := RValue
-     } = parse(In),
+     } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
