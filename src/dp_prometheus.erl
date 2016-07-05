@@ -61,8 +61,18 @@ parse_tags(<<",", R/binary>>, Tag, M = #{tags := Tags}) ->
     M1 = M#{tags := [{<<"">>, K, V} | Tags]},
     parse_tags(R, <<>>, M1);
 
+parse_tags(<<$", R/binary>>, Tag, M) ->
+    parse_tags_quoted(R, <<Tag/binary, $">>, M);
+
 parse_tags(<<C, R/binary>>, Tag, M) ->
     parse_tags(R, <<Tag/binary, C>>, M).
+
+parse_tags_quoted(<<$", R/binary>>, Tag, M) ->
+    parse_tags(R, <<Tag/binary, $">>, M);
+parse_tags_quoted(<<$\\, C, R/binary>>, Tag, M) ->
+    parse_tags_quoted(R, <<Tag/binary, $\\, C>>, M);
+parse_tags_quoted(<<C, R/binary>>, Tag, M) ->
+    parse_tags_quoted(R, <<Tag/binary, C>>, M).
 
 parse_tag(<<"=\"", V/binary>>, K) ->
     {K, unescape(V, <<>>)};
@@ -264,4 +274,16 @@ escape_test() ->
     %% so the delta would be 1
     ?assert(RTime - Time =< 1),
     ?assertEqual(Value, RValue).
+
+comma_in_tag_value_test() ->
+    In = <<"node_filesystem_files{",
+           "device=\"cpu,cpuacct\",",
+           "fstype=\"cgroup\",",
+           "mountpoint=\"/run/lxcfs/controllers/cpu,cpuacct\"} ",
+           "0">>,
+    Tags = [{<<>>, <<"device">>, <<"cpu,cpuacct">>},
+            {<<>>, <<"fstype">>, <<"cgroup">>},
+            {<<>>, <<"mountpoint">>, <<"/run/lxcfs/controllers/cpu,cpuacct">>}],
+    #{tags := RTags} = p(In),
+    ?assertEqual(Tags, RTags).
 -endif.
