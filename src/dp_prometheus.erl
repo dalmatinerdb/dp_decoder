@@ -275,7 +275,7 @@ escape_test() ->
     ?assert(RTime - Time =< 1),
     ?assertEqual(Value, RValue).
 
-coma_in_value_test() ->
+comma_in_tag_value_test() ->
     In = <<"node_filesystem_files{",
            "device=\"cpu,cpuacct\",",
            "fstype=\"cgroup\",",
