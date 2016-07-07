@@ -24,7 +24,7 @@ recombine_tags(Tags) ->
 
 to_number(X) ->
     try
-        binary_to_float(X)
+        binary_to_float(fix_num(X, <<>>))
     catch
         _:_ ->
             binary_to_integer(X)
@@ -39,3 +39,12 @@ parse(Decoder, In) ->
     dp_decoder:protocol().
 protocol(Decoder) ->
     Decoder:protocol().
+
+fix_num(<<>>, Acc) ->
+    Acc;
+fix_num(<<"e", R/binary>>, Acc) ->
+    <<Acc/binary, ".0e", R/binary>>;
+fix_num(<<".", R/binary>>, Acc) ->
+    <<Acc/binary, ".", R/binary>>;
+fix_num(<<C, R/binary>>, Acc) ->
+    fix_num(R, <<Acc/binary, C>>).

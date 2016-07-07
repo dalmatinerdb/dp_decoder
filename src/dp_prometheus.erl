@@ -114,7 +114,6 @@ parse_time(<<" ", T/binary>>, V, M) ->
 parse_time(<<C, R/binary>>, V, M) ->
     parse_time(R, <<V/binary, C>>, M).
 
-
 -ifdef(TEST).
 p(In) ->
     {ok, [E]} = parse(In),
@@ -127,6 +126,26 @@ nan_test() ->
     Tags = [],
     Time = 1395066363,
     Value = ?NAN,
+    #{
+       metric := RMetric,
+       key    := RKey,
+       tags   := RTags,
+       time   := RTime,
+       value  := RValue
+     } = p(In),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Key, RKey),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Value, RValue).
+
+bad_float_test() ->
+    In = <<"metric_without_timestamp_and_labels 12e+06 1395066363000">>,
+    Metric = [<<"metric_without_timestamp_and_labels">>],
+    Key = [<<"metric_without_timestamp_and_labels">>],
+    Tags = [],
+    Time = 1395066363,
+    Value = 12.0e+06,
     #{
        metric := RMetric,
        key    := RKey,
