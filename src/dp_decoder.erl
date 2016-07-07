@@ -1,4 +1,8 @@
-	-module(dp_decoder).
+-module(dp_decoder).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -export([recombine_tags/1, to_number/1, protocol/1, parse/2]).
 -export_type([metric/0, protocol/0]).
@@ -26,7 +30,7 @@ to_number(X) ->
     try
         binary_to_float(fix_num(X, <<>>))
     catch
-        _:_ ->
+        error:badarg ->
             binary_to_integer(X)
     end.
 
@@ -48,3 +52,12 @@ fix_num(<<".", R/binary>>, Acc) ->
     <<Acc/binary, ".", R/binary>>;
 fix_num(<<C, R/binary>>, Acc) ->
     fix_num(R, <<Acc/binary, C>>).
+
+
+-ifdef(TEST).
+to_number_test_() ->
+    [?_assertEqual(to_number(<<"21.12">>), 21.12),
+     ?_assertEqual(to_number(<<"21">>), 21),
+     ?_assertEqual(to_number(<<"1.2e-2">>), 0.012),
+     ?_assertEqual(to_number(<<"12e-2">>), 0.12)].
+-endif.
