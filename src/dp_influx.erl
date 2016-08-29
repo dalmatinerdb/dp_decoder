@@ -1,4 +1,4 @@
--module(dp_infux).
+-module(dp_influx).
 -behaviour(dp_decoder).
 
 -ifdef(TEST).
