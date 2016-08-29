@@ -100,7 +100,6 @@ parse_time(<<"NaN", R/binary>>, M) ->
 parse_time(R, M) ->
     parse_time(R, <<>>, M).
 
-
 parse_time(<<>>, V, M) ->
     Vi = dp_decoder:to_number(V),
     Ti = erlang:system_time(seconds),
