@@ -133,7 +133,7 @@ float_test() ->
 
 telegraf_test() ->
     In = <<"system,host=vagrant "
-           "uptime=18i,uptime_format=\" 0:00\" "
+           "uptime=18,uptime_format=\" 0:00\" "
            "1472723170">>,
     Time = 1472723170,
     Value = 18,
