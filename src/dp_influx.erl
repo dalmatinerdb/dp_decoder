@@ -52,8 +52,9 @@ parse_tag(<<C, R/binary>>, K) ->
     parse_tag(R, <<K/binary, C>>).
 
 %% Time format values such as \" 0:00 \" are ignored
-parse_metrics(<<"\" ", _F:4/binary, "\"", R/binary>>, _Metric, Metrics, M) ->
-    parse_metrics(R, <<>>, Metrics, M);
+parse_metrics(<<"\" ", R/binary>>, _Metric, Metrics, M) ->
+    R0 = consume(R, $"),
+    parse_metrics(R0, <<>>, Metrics, M);
 parse_metrics(<<" ", TimeS/binary>>, Metric, Metrics,
               M = #{key := [K1 | Ks], metric := Ms}) ->
 
@@ -86,7 +87,13 @@ parse_value(<<>>, V) ->
 parse_value(<<C, R/binary>>, V) ->
     parse_value(R, <<V/binary, C>>).
 
-
+%% Consume from the binary until it's empty or a Sentinel is matched
+consume(<<>>, _Sentinel) ->
+    <<>>;
+consume(<<_C, R/binary>>, Sentinel) when _C =:= Sentinel ->
+    R;
+consume(<<_C, R/binary>>, Sentinel) ->
+    consume(R, Sentinel).
 
 -spec protocol() -> dp_line_proto.
 protocol() ->
