@@ -31,7 +31,6 @@ parse_metric(<<",", R/binary>>, Metric, M) ->
 parse_metric(<<C, R/binary>>, Metric, M) ->
     parse_metric(R, <<Metric/binary, C>>, M).
 
-
 parse_tags(<<" ", R/binary>>, Tag, M = #{key := Ks, tags := Tags}) ->
     {K, V} = parse_tag(Tag, <<>>),
     Tags1 = lists:sort([{<<"">>, K, V} | Tags]),
@@ -52,10 +51,19 @@ parse_tag(<<"=", V/binary>>, K) ->
 parse_tag(<<C, R/binary>>, K) ->
     parse_tag(R, <<K/binary, C>>).
 
+%% Time format values such as \" 0:00 \" are ignored
+parse_metrics(<<"\" ", _F:4/binary, "\"", R/binary>>, _Metric, Metrics, M) ->
+    parse_metrics(R, <<>>, Metrics, M);
 parse_metrics(<<" ", TimeS/binary>>, Metric, Metrics,
               M = #{key := [K1 | Ks], metric := Ms}) ->
-    Metrics1 = [parse_metric(Metric, <<>>) | Metrics],
-    Time = dp_decoder:to_number(TimeS) div (1000 * 1000 * 1000),
+
+    Metrics1 = case byte_size(Metric) of
+                   Size when Size > 0 ->
+                       [parse_metric(Metric, <<>>) | Metrics];
+                   0 ->
+                       Metrics
+               end,
+    Time = dp_decoder:to_time(TimeS),
     M1 = M#{time := Time },
     {ok, [M1#{value := V, metric := Ms ++ [K],
               key := [K1, K | Ks]} || {K, V} <- Metrics1]};
@@ -71,8 +79,10 @@ parse_metric(<<C, R/binary>>, K) ->
 
 parse_value(<<"i">>, V) ->
     binary_to_integer(V);
+%% Strictly speaking, this would be a float.  However, some influx producers
+%% are less conformant to the line spec.
 parse_value(<<>>, V) ->
-    binary_to_float(V);
+    dp_decoder:to_number(V);
 parse_value(<<C, R/binary>>, V) ->
     parse_value(R, <<V/binary, C>>).
 
@@ -121,6 +131,20 @@ float_test() ->
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Value, RValue).
 
+telegraf_test() ->
+    In = <<"system,host=vagrant "
+           "uptime=18i,uptime_format=\" 0:00\" "
+           "1472723170">>,
+    Time = 1472723170,
+    Value = 18,
+    Metric = [<<"system">>, <<"uptime">>],
+    Tags = [{<<>>, <<"host">>, <<"vagrant">>}],
+    [#{tags := RTags, time := RTime, value := RValue, metric := RMetric}]
+        = p(In),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Value, RValue).
 
 multi_test() ->
     In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
