@@ -34,6 +34,8 @@ to_number(X) ->
             binary_to_integer(X)
     end.
 
+to_time(<<>>) ->
+    erlang:system_time(seconds);
 %% @doc Normalizes a timestamp to second precision.  For higher precision
 %% timestamps, this is lossy. Protocols such as Influx can send timestamps in
 %% one of [n,u,ms,s,m,h].
