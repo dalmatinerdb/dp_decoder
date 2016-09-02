@@ -4,7 +4,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([recombine_tags/1, to_number/1, protocol/1, parse/2]).
+-export([recombine_tags/1, to_number/1, to_time/1, protocol/1, parse/2]).
 -export_type([metric/0, protocol/0]).
 
 -type metric() :: #{
@@ -33,6 +33,18 @@ to_number(X) ->
         error:badarg ->
             binary_to_integer(X)
     end.
+
+to_time(<<>>) ->
+    erlang:system_time(seconds);
+%% @doc Normalizes a timestamp to second precision.  For higher precision
+%% timestamps, this is lossy. Protocols such as Influx can send timestamps in
+%% one of [n,u,ms,s,m,h].
+to_time(Time) when is_binary(Time) ->
+    N = to_number(Time),
+    SecondsPrecision = 9,
+    Log = trunc(math:log10(N)),
+    Exp = math:pow(10, Log - SecondsPrecision),
+    round(N / Exp).
 
 -spec parse(Decoder::module(), In::binary()) ->
                    {ok, [dp_decoder:metric()]} | {error, term()} | undefined.
