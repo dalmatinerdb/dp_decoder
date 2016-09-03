@@ -78,20 +78,21 @@ parse_tag(<<C, R/binary>>, K) ->
 %% Field keys require escaping for commas, whitespace and equals. Fields may
 %% have 'boolean', 'string', 'int' or 'float' values. Fields with 'string'
 %% values are re-classified as tags
-parse_metrics(<<$", R/binary>>, Metric, Metrics,
-              M = #{key := Ks, tags := Tags}) ->
-    {V, R0} = parse_str_value(R, <<>>),
-    {K, V}  = parse_tag(<<Metric/binary, V/binary>>, <<>>),
-    Tags1 = lists:sort([{<<"">>, K, V} | Tags]),
-    M1 = M#{key := Ks ++ dp_decoder:recombine_tags(Tags1),
-            tags := Tags1},
-    parse_metrics(R0, <<>>, Metrics, M1);
+parse_metrics(<<$", R/binary>>, _Metric, Metrics, M) ->
+    {_V, R0} = parse_str_value(R, <<>>),
+    parse_metrics(R0, <<>>, Metrics, M);
 parse_metrics(<<$\\, $,, R/binary>>, Metric, Metrics, M) ->
     parse_metrics(R, <<Metric/binary, ",">>, Metrics, M);
 parse_metrics(<<"\\ ", R/binary>>, Metric, Metrics, M) ->
     parse_metrics(R, <<Metric/binary, " ">>, Metrics, M);
+parse_metrics(<<" ", TimeS/binary>>, <<>>, Metrics,
+              M = #{key := [K1 | Ks], metric := Ms}) ->
+    Time = dp_decoder:to_time(TimeS),
+    M1 = M#{time := Time },
+    {ok, [M1#{value := V, metric := Ms ++ [K],
+              key := [K1, K | Ks]} || {K, V} <- Metrics]};
 parse_metrics(<<" ", TimeS/binary>>, Metric, Metrics,
-              M = #{key := [K1 | Ks], metric := Ms}) when Metric =/= <<>> ->
+              M = #{key := [K1 | Ks], metric := Ms})  ->
     Metrics1 = [parse_metric(Metric, <<>>) | Metrics],
     Time = dp_decoder:to_time(TimeS),
     M1 = M#{time := Time },
@@ -163,6 +164,19 @@ protocol() ->
 p(In) ->
     {ok, E} = parse(In),
     E.
+
+error_test() ->
+    In = <<"system,host=Schroedinger uptime=101422i,uptime_format=\"1 day,  4:10\" 1472945100">>,
+    Time = 1472945100,
+    Value = 101422,
+    Metric = [<<"system">>, <<"uptime">>],
+    Tags = [{<<>>, <<"host">>, <<"Schroedinger">>}],
+    [#{tags := RTags, time := RTime, value := RValue,
+       metric := RMetric}] = p(In),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Value, RValue).
 
 int_test() ->
     In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
@@ -288,8 +302,7 @@ escaped_field_value_test() ->
     In = <<"cpu,hostname=host_0 "
            "usage_user=\"J\\\"o, = h\\n\",io_time=3i "
            "1451606400000000000">>,
-    Tags = [{<<>>, <<"hostname">>, <<"host_0">>},
-            {<<>>, <<"usage_user">>, <<"J\"o, = h\\n">>}],
+    Tags = [{<<>>, <<"hostname">>, <<"host_0">>}],
     [#{tags := RTags, time := _RTime, value := _RValue, metric := _RMetric}] = p(In),
     ?assertEqual(Tags, RTags).
 
