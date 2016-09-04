@@ -36,6 +36,8 @@ parse(In) ->
      },
     parse_measurement(In, <<>>, M).
 
+eat_line(<<"\r\n", R/binary>>) ->
+    {ok, [], R};
 eat_line(<<"\n", R/binary>>) ->
     {ok, [], R};
 eat_line(<<_, R/binary>>) ->
@@ -110,6 +112,9 @@ parse_time(<<>>, TimeS, Ms) ->
     Time = dp_decoder:to_time(TimeS),
     {ok, [M#{time := Time} || M <- Ms]};
 parse_time(<<"\n", R/binary>>, TimeS, Ms) ->
+    Time = dp_decoder:to_time(TimeS),
+    {ok, [M#{time := Time} || M <- Ms], R};
+parse_time(<<"\r\n", R/binary>>, TimeS, Ms) ->
     Time = dp_decoder:to_time(TimeS),
     {ok, [M#{time := Time} || M <- Ms], R};
 parse_time(<<C, R/binary>>, TimeS, Ms) ->
