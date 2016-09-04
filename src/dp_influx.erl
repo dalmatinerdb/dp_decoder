@@ -34,7 +34,12 @@ parse(In) ->
       time => 0,
       value => 0
      },
-    parse_measurement(In, <<>>, M).
+    try
+        parse_measurement(In, <<>>, M)
+    catch
+        _:_ ->
+            {incomplete, In}
+    end.
 
 eat_line(<<"\r\n", R/binary>>) ->
     {ok, [], R};
@@ -330,9 +335,17 @@ empty_timestamp_test() ->
     Value = 3,
     Metric = [<<"cpu">>, <<"usage_user">>],
     Tags = [{<<>>, <<"hostname">>, <<"host_0">>}],
-    [#{tags := _RTags, time := RTime, value := _RValue, metric := _RMetric}]
+    [#{tags := RTags, time := RTime, value := RValue, metric := RMetric}]
         = p(In),
-    ?assert(Time =< RTime).
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Value, RValue),
+    ?assertEqual(Metric, RMetric).
+
+incomplete_test() ->
+    In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
+           "usage_user=58.1317132304976170,io_time=0i">>,
+    ?assertEqual({incomplete, In}, parse(In)).
 
 multi_test() ->
     In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
