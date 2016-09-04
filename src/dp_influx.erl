@@ -34,12 +34,7 @@ parse(In) ->
       time => 0,
       value => 0
      },
-    try
-        parse_measurement(In, <<>>, M)
-    catch
-        _:_ ->
-            {incomplete, In}
-    end.
+    parse_measurement(In, <<>>, M).
 
 eat_line(<<"\r\n", R/binary>>) ->
     {ok, [], R};
@@ -56,8 +51,7 @@ parse_measurement(<<$\\, $,, R/binary>>, Measure, M) ->
 parse_measurement(<<"\\ ", R/binary>>, Measure, M) ->
     parse_measurement(R, <<Measure/binary, " ">>, M);
 parse_measurement(<<",", R/binary>>, Measure, M) ->
-    M1 = M#{key := [Measure],
-            metric := [Measure]},
+    M1 = M#{metric := [Measure]},
     parse_tags(R, <<>>, M1);
 parse_measurement(<<C, R/binary>>, Measure, M) ->
     parse_measurement(R, <<Measure/binary, C>>, M).
@@ -67,17 +61,15 @@ parse_tags(<<$\\, $,, R/binary>>, Tag, M) ->
     parse_tags(R, <<Tag/binary, ",">>, M);
 parse_tags(<<"\\ ", R/binary>>, Tag, M) ->
     parse_tags(R, <<Tag/binary, " ">>, M);
-parse_tags(<<" ", R/binary>>, Tag, M = #{key := Ks, tags := Tags}) ->
+parse_tags(<<" ", R/binary>>, Tag, M = #{tags := Tags}) ->
     {K, V} = parse_tag(Tag, <<>>),
     Tags1 = lists:sort([{<<"">>, K, V} | Tags]),
-    M1 = M#{key := Ks ++ dp_decoder:recombine_tags(Tags1),
-            tags := Tags1},
+    M1 = M#{tags := Tags1},
     parse_metrics(R, <<>>, [], M1);
-parse_tags(<<",", R/binary>>, Tag, M = #{key := Ks, tags := Tags}) ->
+parse_tags(<<",", R/binary>>, Tag, M = #{tags := Tags}) ->
     {K, V} = parse_tag(Tag, <<>>),
     Tags1 = lists:sort([{<<"">>, K, V} | Tags]),
-    M1 = M#{key := Ks ++ dp_decoder:recombine_tags(Tags1),
-            tags := Tags1},
+    M1 = M#{tags := Tags1},
     parse_tags(R, <<>>, M1);
 parse_tags(<<C, R/binary>>, Tag, M) ->
     parse_tags(R, <<Tag/binary, C>>, M).
@@ -100,14 +92,18 @@ parse_metrics(<<$\\, $,, R/binary>>, Metric, Metrics, M) ->
 parse_metrics(<<"\\ ", R/binary>>, Metric, Metrics, M) ->
     parse_metrics(R, <<Metric/binary, " ">>, Metrics, M);
 parse_metrics(<<" ", TimeS/binary>>, <<>>, Metrics,
-              M = #{key := [K1 | Ks], metric := Ms}) ->
-    parse_time(TimeS, <<>>, [M#{value := V, metric := Ms ++ [K],
-                                 key := [K1, K | Ks]} || {K, V} <- Metrics]);
+              M = #{metric := Ms, tags := Tags}) ->
+    parse_time(TimeS, <<>>,
+               [M#{value := V, metric := Ms ++ [K],
+                   key := Ms ++ [K | dp_decoder:recombine_tags(Tags)]}
+                || {K, V} <- Metrics]);
 parse_metrics(<<" ", TimeS/binary>>, Metric, Metrics,
-              M = #{key := [K1 | Ks], metric := Ms})  ->
+              M = #{metric := Ms, tags := Tags})  ->
     Metrics1 = [parse_metric(Metric, <<>>) | Metrics],
-    parse_time(TimeS, <<>>, [M#{value := V, metric := Ms ++ [K],
-                                 key := [K1, K | Ks]} || {K, V} <- Metrics1]);
+    parse_time(TimeS, <<>>,
+               [M#{value := V, metric := Ms ++ [K],
+                   key := Ms ++ [K | dp_decoder:recombine_tags(Tags)]}
+                || {K, V} <- Metrics1]);
 parse_metrics(<<",", R/binary>>, Metric, Metrics, M) when Metric =/= <<>> ->
     parse_metrics(R, <<>>, [parse_metric(Metric, <<>>) | Metrics], M);
 parse_metrics(<<C, R/binary>>, Metric, Metrics, M) ->
@@ -341,11 +337,6 @@ empty_timestamp_test() ->
     ?assertEqual(Time, RTime),
     ?assertEqual(Value, RValue),
     ?assertEqual(Metric, RMetric).
-
-incomplete_test() ->
-    In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
-           "usage_user=58.1317132304976170,io_time=0i">>,
-    ?assertEqual({incomplete, In}, parse(In)).
 
 multi_test() ->
     In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
