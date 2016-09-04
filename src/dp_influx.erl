@@ -23,9 +23,9 @@
 -spec parse(In::binary()) ->
                    {ok, [dp_decoder:metric()]} | undefined.
 parse(<<>>) ->
-    undefined;
-parse(<<"#", _/binary>>) ->
-    undefined;
+    eat_line(<<>>);
+parse(<<"#", R/binary>>) ->
+    eat_line(R);
 parse(In) ->
     M = #{
       key => [],
@@ -35,6 +35,13 @@ parse(In) ->
       value => 0
      },
     parse_measurement(In, <<>>, M).
+
+eat_line(<<"\n", R/binary>>) ->
+    {ok, [], R};
+eat_line(<<_, R/binary>>) ->
+    eat_line(R);
+eat_line(<<>>) ->
+    {ok, [], <<>>}.
 
 %% Measurements require escaping for commas and whitespace
 parse_measurement(<<$\\, $,, R/binary>>, Measure, M) ->
@@ -87,21 +94,26 @@ parse_metrics(<<"\\ ", R/binary>>, Metric, Metrics, M) ->
     parse_metrics(R, <<Metric/binary, " ">>, Metrics, M);
 parse_metrics(<<" ", TimeS/binary>>, <<>>, Metrics,
               M = #{key := [K1 | Ks], metric := Ms}) ->
-    Time = dp_decoder:to_time(TimeS),
-    M1 = M#{time := Time },
-    {ok, [M1#{value := V, metric := Ms ++ [K],
-              key := [K1, K | Ks]} || {K, V} <- Metrics]};
+    parse_time(TimeS, <<>>, [M#{value := V, metric := Ms ++ [K],
+                                 key := [K1, K | Ks]} || {K, V} <- Metrics]);
 parse_metrics(<<" ", TimeS/binary>>, Metric, Metrics,
               M = #{key := [K1 | Ks], metric := Ms})  ->
     Metrics1 = [parse_metric(Metric, <<>>) | Metrics],
-    Time = dp_decoder:to_time(TimeS),
-    M1 = M#{time := Time },
-    {ok, [M1#{value := V, metric := Ms ++ [K],
-              key := [K1, K | Ks]} || {K, V} <- Metrics1]};
+    parse_time(TimeS, <<>>, [M#{value := V, metric := Ms ++ [K],
+                                 key := [K1, K | Ks]} || {K, V} <- Metrics1]);
 parse_metrics(<<",", R/binary>>, Metric, Metrics, M) when Metric =/= <<>> ->
     parse_metrics(R, <<>>, [parse_metric(Metric, <<>>) | Metrics], M);
 parse_metrics(<<C, R/binary>>, Metric, Metrics, M) ->
     parse_metrics(R, <<Metric/binary, C>>, Metrics, M).
+
+parse_time(<<>>, TimeS, Ms) ->
+    Time = dp_decoder:to_time(TimeS),
+    {ok, [M#{time := Time} || M <- Ms]};
+parse_time(<<"\n", R/binary>>, TimeS, Ms) ->
+    Time = dp_decoder:to_time(TimeS),
+    {ok, [M#{time := Time} || M <- Ms], R};
+parse_time(<<C, R/binary>>, TimeS, Ms) ->
+    parse_time(R, <<TimeS/binary, C>>, Ms).
 
 parse_metric(<<$\\, $=, R/binary>>, K) ->
     parse_metric(R, <<K/binary, "=">>);
@@ -156,9 +168,9 @@ parse_str_value(<<$", R/binary>>, V) ->
 parse_str_value(<<C, R/binary>>, V) ->
     parse_str_value(R, <<V/binary, C>>).
 
--spec protocol() -> dp_line_proto.
+-spec protocol() -> dp_multi_line_proto.
 protocol() ->
-    dp_line_proto.
+    dp_multi_line_proto.
 
 -ifdef(TEST).
 p(In) ->

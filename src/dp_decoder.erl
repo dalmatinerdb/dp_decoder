@@ -15,7 +15,7 @@
               value => integer()
              }.
 
--type protocol() :: dp_line_proto.
+-type protocol() :: dp_line_proto | dp_multiline_proto.
 
 -callback parse(In::binary()) ->
     {ok, [dp_decoder:metric()]} | {error, term()} | undefined.
