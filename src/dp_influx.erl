@@ -178,9 +178,9 @@ parse_str_value(<<$", R/binary>>, V) ->
 parse_str_value(<<C, R/binary>>, V) ->
     parse_str_value(R, <<V/binary, C>>).
 
--spec protocol() -> dp_multi_line_proto.
+-spec protocol() -> dp_multiline_proto.
 protocol() ->
-    dp_multi_line_proto.
+    dp_multiline_proto.
 
 -ifdef(TEST).
 p(In) ->
