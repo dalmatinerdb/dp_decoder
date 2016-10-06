@@ -18,7 +18,7 @@ protocol() ->
 
 
 -spec parse(In::binary()) ->
-                   {ok, [dp_decoder:metric()]} | undefined.
+                   {ok, [dp_decoder:event()]} | undefined.
 parse(<<"<", N, R/binary>>) ->
     M = #{
       type => event,
@@ -87,7 +87,7 @@ parse_time(<<HH:2/binary, ":", MM:2/binary, ":", SS:2/binary, " ", R/binary>>,
     Seconds = erlang:universaltime_to_posixtime(Universal),
     Nano = erlang:convert_time_unit(Seconds, seconds, nano_seconds),
     D1 = D#{<<"timestamp">> => Nano},
-    M1 = M#{data => D1, timestamp => Nano},
+    M1 = M#{data => D1, time => Nano},
     parse_hostname(R, <<>>, M1).
 
 %% If the hostname ends with a ':' it seems to be considered a tag
@@ -289,6 +289,9 @@ parse_test() ->
                   <<"timestamp">> => 1474298748000000000},
     Parsed7 = p("<13>Sep 19 17:25:48 Schroedinger Twitter[10811]: \n"),
 
+    Expected8 = #{},
+    Parsed8 = p("<30>Oct  3 08:58:08 gcenagiosn0 dataloop-agent[28746]:  "
+                "* Stopping dataloop-agent daemon:"),
     ?assertEqual(Expected1, Parsed1),
     ?assertEqual(Expected2, Parsed2),
     ?assertEqual(Expected3, Parsed3),
@@ -296,6 +299,7 @@ parse_test() ->
     ?assertEqual(Expected5, Parsed5),
     ?assertEqual(Expected6, Parsed6),
     ?assertEqual(Expected7, Parsed7),
+    ?assertEqual(Expected8, Parsed8),
     ?assertEqual(undefined, parse("asdf")).
 
 -endif.

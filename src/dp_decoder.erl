@@ -5,7 +5,13 @@
 -endif.
 
 -export([recombine_tags/1, to_number/1, to_time/1, protocol/1, parse/2]).
--export_type([metric/0, protocol/0]).
+-export_type([metric/0, event/0, protocol/0]).
+
+-type event() :: #{
+             type => event,
+             time => pos_integer(),
+             data => maps:map()
+            }.
 
 -type metric() :: #{
               metric => [binary()],
@@ -18,7 +24,7 @@
 -type protocol() :: dp_line_proto | dp_multiline_proto.
 
 -callback parse(In::binary()) ->
-    {ok, [dp_decoder:metric()]} | {error, term()} | undefined.
+    {ok, [dp_decoder:metric()] | [dp_decoder:event()]} | {error, term()} | undefined.
 
 -callback protocol() ->
     dp_decoder:protocol().
