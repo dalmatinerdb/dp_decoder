@@ -289,7 +289,15 @@ parse_test() ->
                   <<"timestamp">> => 1474298748000000000},
     Parsed7 = p("<13>Sep 19 17:25:48 Schroedinger Twitter[10811]: \n"),
 
-    Expected8 = #{},
+    Expected8 = #{<<"body">> => <<" * Stopping dataloop-agent daemon:">>,
+                  <<"facility">> => <<"system">>,
+                  <<"facility_int">> => 3,
+                  <<"hostname">> => <<"gcenagiosn0">>,
+                  <<"priority">> => 30,
+                   <<"severity">> => <<"info">>,
+                  <<"severity_int">> => 6,
+                  <<"tag">> => <<"dataloop-agent[28746]">>,
+                  <<"timestamp">> => 1475477888000000000},
     Parsed8 = p("<30>Oct  3 08:58:08 gcenagiosn0 dataloop-agent[28746]:  "
                 "* Stopping dataloop-agent daemon:"),
     ?assertEqual(Expected1, Parsed1),
