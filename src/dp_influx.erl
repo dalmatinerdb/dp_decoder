@@ -53,6 +53,9 @@ parse_measurement(<<"\\ ", R/binary>>, Measure, M) ->
 parse_measurement(<<",", R/binary>>, Measure, M) ->
     M1 = M#{metric := [Measure]},
     parse_tags(R, <<>>, M1);
+parse_measurement(<<" ", R/binary>>, Measure, M) ->
+    M1 = M#{metric := [Measure]},
+    parse_metrics(R, <<>>, [], M1);
 parse_measurement(<<C, R/binary>>, Measure, M) ->
     parse_measurement(R, <<Measure/binary, C>>, M).
 
@@ -361,4 +364,18 @@ multi_test() ->
     ?assertEqual(Time,    RTime2),
     ?assertEqual(Metric2, RMetric2),
     ?assertEqual(Value2,  RValue2).
+
+no_tagset_test() ->
+    In = <<"weather temperature=82 1465839830100400200">>,
+    Time = 1465839830,
+    Value = 82,
+    Metric = [<<"weather">>, <<"temperature">>],
+    Tags = [],
+    [#{tags := RTags, time := RTime, value := RValue,
+       metric := RMetric}] = p(In),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Value, RValue).
+
 -endif.
