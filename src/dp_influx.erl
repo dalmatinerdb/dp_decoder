@@ -172,6 +172,8 @@ parse_str_value(<<>>, V) ->
     {V, <<>>};
 parse_str_value(<<$\\, $", R/binary>>, V) ->
     parse_str_value(R, <<V/binary, $">>);
+parse_str_value(<<$", ",", R/binary>>, V) ->
+    {V, R};
 parse_str_value(<<$", R/binary>>, V) ->
     {V, R};
 parse_str_value(<<C, R/binary>>, V) ->
@@ -371,6 +373,19 @@ no_tagset_test() ->
     Value = 82,
     Metric = [<<"weather">>, <<"temperature">>],
     Tags = [],
+    [#{tags := RTags, time := RTime, value := RValue,
+       metric := RMetric}] = p(In),
+    ?assertEqual(Tags, RTags),
+    ?assertEqual(Time, RTime),
+    ?assertEqual(Metric, RMetric),
+    ?assertEqual(Value, RValue).
+
+docker_test() ->
+    In = <<"docker_container_cpu,cpu=cpu0 container_id=\"843013be46a70a4e22ee976d3ba6f4133fae42b06c04402e814b0cf42cfca02d\",usage_total=1366424905i 1489078240000000000">>,
+    Time = 1489078240,
+    Value = 1366424905,
+    Metric = [<<"docker_container_cpu">>, <<"usage_total">>],
+    Tags = [{<<>>,<<"cpu">>,<<"cpu0">>}],
     [#{tags := RTags, time := RTime, value := RValue,
        metric := RMetric}] = p(In),
     ?assertEqual(Tags, RTags),
