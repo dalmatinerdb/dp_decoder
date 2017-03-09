@@ -278,6 +278,7 @@ parse_test() ->
     Parsed6 = p("<5>Sep 19 04:02:59 Schroedinger sandboxd[155] "
                 "([531]): Paste(531) deny file-read-data "
                 "/Applications/Emacs.app/Contents/PkgInfo\n"),
+
     Expected7 = #{<<"body">> => <<>>,
                   <<"facility">> => <<"user">>,
                   <<"facility_int">> => 1,
@@ -286,7 +287,7 @@ parse_test() ->
                   <<"severity">> => <<"notice">>,
                   <<"severity_int">> => 5,
                   <<"tag">> => <<"Twitter[10811]">>,
-                  <<"timestamp">> => 1474298748000000000},
+                  <<"timestamp">> => to_nano(9, 19, 17, 25, 48)},
     Parsed7 = p("<13>Sep 19 17:25:48 Schroedinger Twitter[10811]: \n"),
 
     Expected8 = #{<<"body">> => <<" * Stopping dataloop-agent daemon:">>,
@@ -297,7 +298,7 @@ parse_test() ->
                    <<"severity">> => <<"info">>,
                   <<"severity_int">> => 6,
                   <<"tag">> => <<"dataloop-agent[28746]">>,
-                  <<"timestamp">> => 1475477888000000000},
+                  <<"timestamp">> => to_nano(10, 3, 8, 58, 08)},
     Parsed8 = p("<30>Oct  3 08:58:08 gcenagiosn0 dataloop-agent[28746]:  "
                 "* Stopping dataloop-agent daemon:"),
     ?assertEqual(Expected1, Parsed1),
