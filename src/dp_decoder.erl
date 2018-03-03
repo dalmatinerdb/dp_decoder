@@ -17,8 +17,9 @@
               metric => [binary()],
               key => [binary()],
               tags => [{binary(), binary(), binary()}],
-              time => pos_integer(),
-              value => integer()
+              time => non_neg_integer(),
+              hpts => non_neg_integer(),
+              value => number()
              }.
 
 -type protocol() :: dp_line_proto | dp_multiline_proto.
@@ -39,9 +40,13 @@ to_number(X) ->
         error:badarg ->
             binary_to_integer(X)
     end.
-
+-spec to_time(binary()) ->
+                     {Time::non_neg_integer(),
+                      HPTS::non_neg_integer()}.
 to_time(<<>>) ->
-    erlang:system_time(seconds);
+    NS = erlang:system_time(nanosecond),
+    S = erlang:convert_time_unit(NS, nanosecond, second),
+    {S, NS};
 %% @doc Normalizes a timestamp to second precision.  For higher precision
 %% timestamps, this is lossy. Protocols such as Influx can send timestamps in
 %% one of [n,u,ms,s,m,h].
@@ -50,7 +55,7 @@ to_time(Time) when is_binary(Time) ->
     SecondsPrecision = 9,
     Log = trunc(math:log10(N)),
     Exp = math:pow(10, Log - SecondsPrecision),
-    round(N / Exp).
+    {round(N / Exp), N}.
 
 -spec parse(Decoder::module(), In::binary()) ->
                    {ok, [dp_decoder:metric()]} | {error, term()} | undefined.

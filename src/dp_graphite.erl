@@ -15,6 +15,7 @@ parse(In) ->
       key => [],
       tags => [],
       time => 1,
+      hpts => 1000000000, %% same as 1 in  NS
       value => 0
      },
     parse_key(In, <<>>, M).
@@ -91,7 +92,8 @@ parse_time(<<" ", T/binary>>, V,
     Vi = dp_decoder:to_number(V),
     Ti = binary_to_integer(T),
     M1 = M#{time := Ti, value := Vi,
-            metric := case Metric of 
+            hpts := erlang:convert_time_unit(Ti, second, nanosecond),
+            metric := case Metric of
                           [] -> [<<"metric">>];
                           _ -> lists:reverse(Metric)
                       end,
@@ -122,18 +124,21 @@ metric2_test() ->
             {<<>>, <<"what">>, <<"disk_space">>},
             {<<"metadata">>, <<"agent">>, <<"diamond2">>}],
     Time = 1234567890,
+    HPTS = erlang:convert_time_unit(Time, second, nanosecond),
     Value = 48929424224,
     #{
        metric := RMetric,
        key := RKey,
        tags := RTags,
        time := RTime,
+       hpts := RHPTS,
        value := RValue
      } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 
 metric2_pfx_test() ->
@@ -152,18 +157,21 @@ metric2_pfx_test() ->
             {<<>>, <<"what">>, <<"disk_space">>},
             {<<"metadata">>, <<"agent">>, <<"diamond2">>}],
     Time = 1234567890,
+    HPTS = erlang:convert_time_unit(Time, second, nanosecond),
     Value = 48929424224,
     #{
        metric := RMetric,
        key := RKey,
        tags := RTags,
        time := RTime,
+       hpts := RHPTS,
        value := RValue
      } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 
 normal_test() ->
@@ -172,18 +180,21 @@ normal_test() ->
     Key = [<<"disk_space">>, <<"dfs4">>],
     Tags = [],
     Time = 1234567890,
+    HPTS = erlang:convert_time_unit(Time, second, nanosecond),
     Value = 48929424224,
     #{
        metric := RMetric,
        key := RKey,
        tags := RTags,
        time := RTime,
+       hpts := RHPTS,
        value := RValue
      } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 -endif.
 

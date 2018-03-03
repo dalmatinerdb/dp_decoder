@@ -15,6 +15,7 @@ parse(In) ->
       key => [],
       tags => [],
       time => 1,
+      hpts => 1000000000, %% same as 1 in  NS
       value => 0
      },
     parse_key(In, <<>>, M).
@@ -67,7 +68,9 @@ parse_tag(<<C, R/binary>>, K) ->
 parse_time(<<" ", T/binary>>, V, M) ->
     Vi = binary_to_integer(V),
     Ti = binary_to_integer(T),
-    {ok, [M#{time := Ti, value := Vi}]};
+    {ok, [M#{time := Ti,
+             hpts := erlang:convert_time_unit(Ti, second, nanosecond),
+             value := Vi}]};
 
 parse_time(<<C, R/binary>>, V, M) ->
     parse_time(R, <<V/binary, C>>, M).
@@ -94,18 +97,21 @@ example_test() ->
             {<<>>, <<"what">>, <<"disk_space">>},
             {<<"metadata">>, <<"agent">>, <<"diamond2">>}],
     Time = 1234567890,
+    HPTS = erlang:convert_time_unit(Time, second, nanosecond),
     Value = 48929424224,
     #{
        metric := RMetric,
        key := RKey,
        tags := RTags,
        time := RTime,
+       hpts := RHPTS,
        value := RValue
      } = p(In),
     ?assertEqual(Key, RKey),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 -endif.
 

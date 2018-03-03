@@ -15,6 +15,7 @@ parse(<<"put ", In/binary>>) ->
       key => [],
       tags => [],
       time => 0,
+      hpts => 0,
       value => 0
      },
     parse_metric(In, <<>>, M).
@@ -42,7 +43,9 @@ parse_metric(<<C, R/binary>>, Part, M) ->
 
 parse_time(<<" ", R/binary>>, T, M) ->
     Ti = binary_to_integer(T),
-    M1 = M#{time := Ti},
+    M1 = M#{time := Ti,
+            hpts := erlang:convert_time_unit(Ti, second, nanosecond)
+           },
     parse_value(R, <<>>, M1);
 
 parse_time(<<C, R/binary>>, Part, M) ->
@@ -89,18 +92,20 @@ example_test() ->
     Tags = [{<<>>, <<"cpu">>, <<"0">>},
             {<<>>, <<"host">>, <<"webserver01">>}],
     Time = 1356998400,
+    HPTS = erlang:convert_time_unit(Time, second, nanosecond),
     Value = 42.5,
     #{
        metric := RMetric,
        key    := RKey,
        tags   := RTags,
        time   := RTime,
+       hpts := RHPTS,
        value  := RValue
      } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 -endif.
-

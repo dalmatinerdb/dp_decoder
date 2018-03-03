@@ -26,6 +26,7 @@ parse(In) ->
       metric => [],
       tags => [],
       time => 0,
+      hpts => 0,
       value => 0
      },
     parse_metric(In, <<>>, M).
@@ -102,13 +103,16 @@ parse_time(R, M) ->
 
 parse_time(<<>>, V, M) ->
     Vi = dp_decoder:to_number(V),
-    Ti = erlang:system_time(seconds),
-    {ok, [M#{time := Ti, value := Vi}]};
+    HPTS = erlang:system_time(nanosecond),
+    Ti = erlang:convert_time_unit(HPTS, nanosecond, second),
+    {ok, [M#{time := Ti, hpts := HPTS, value := Vi}]};
 
 parse_time(<<" ", T/binary>>, V, M) ->
     Vi = dp_decoder:to_number(V),
-    Ti = binary_to_integer(T) div 1000,
-    {ok, [M#{time := Ti, value := Vi}]};
+    Tr = binary_to_integer(T),
+    Ti = erlang:convert_time_unit(Tr, millisecond, second),
+    HPTS = erlang:convert_time_unit(Tr, millisecond, nanosecond),
+    {ok, [M#{time := Ti, hpts := HPTS, value := Vi}]};
 
 parse_time(<<C, R/binary>>, V, M) ->
     parse_time(R, <<V/binary, C>>, M).
@@ -124,18 +128,21 @@ nan_test() ->
     Key = [<<"metric_without_timestamp_and_labels">>],
     Tags = [],
     Time = 1395066363,
+    HPTS = 1395066363000000000,
     Value = ?NAN,
     #{
        metric := RMetric,
        key    := RKey,
        tags   := RTags,
        time   := RTime,
+       hpts   := RHPTS,
        value  := RValue
      } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 
 bad_float_test() ->
@@ -205,18 +212,21 @@ example_test() ->
     Tags = [{<<>>, <<"code">>, <<"200">>},
             {<<>>, <<"method">>, <<"post">>}],
     Time = 1395066363,
+    HPTS = 1395066363000000000,
     Value = 1027,
     #{
        metric := RMetric,
        key    := RKey,
        tags   := RTags,
        time   := RTime,
+       hpts   := RHPTS,
        value  := RValue
      } = p(In),
     ?assertEqual(Metric, RMetric),
     ?assertEqual(Key, RKey),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(HPTS, RHPTS),
     ?assertEqual(Value, RValue).
 tailing_colon_test() ->
     In = <<"http_requests_total{method=\"post\",code=\"200\",} 1027 ",

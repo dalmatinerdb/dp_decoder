@@ -32,6 +32,7 @@ parse(In) ->
       metric => [],
       tags => [],
       time => 0,
+      hpts => 0,
       value => 0
      },
     parse_measurement(In, <<>>, M).
@@ -113,14 +114,14 @@ parse_metrics(<<C, R/binary>>, Metric, Metrics, M) ->
     parse_metrics(R, <<Metric/binary, C>>, Metrics, M).
 
 parse_time(<<>>, TimeS, Ms) ->
-    Time = dp_decoder:to_time(TimeS),
-    {ok, [M#{time := Time} || M <- Ms]};
+    {Time, HPTS} = dp_decoder:to_time(TimeS),
+    {ok, [M#{time := Time, hpts := HPTS} || M <- Ms]};
 parse_time(<<"\n", R/binary>>, TimeS, Ms) ->
-    Time = dp_decoder:to_time(TimeS),
-    {ok, [M#{time := Time} || M <- Ms], R};
+    {Time, HPTS} = dp_decoder:to_time(TimeS),
+    {ok, [M#{time := Time, hpts := HPTS} || M <- Ms], R};
 parse_time(<<"\r\n", R/binary>>, TimeS, Ms) ->
-    Time = dp_decoder:to_time(TimeS),
-    {ok, [M#{time := Time} || M <- Ms], R};
+    {Time, HPTS} = dp_decoder:to_time(TimeS),
+    {ok, [M#{time := Time, hpts := HPTS} || M <- Ms], R};
 parse_time(<<C, R/binary>>, TimeS, Ms) ->
     parse_time(R, <<TimeS/binary, C>>, Ms).
 
@@ -333,13 +334,15 @@ empty_timestamp_test() ->
     In = <<"cpu,hostname=host_0 "
            "usage_user=3i ">>,
     Time = erlang:system_time(seconds),
+    HPTS = Time,
     Value = 3,
     Metric = [<<"cpu">>, <<"usage_user">>],
     Tags = [{<<>>, <<"hostname">>, <<"host_0">>}],
-    [#{tags := RTags, time := RTime, value := RValue, metric := RMetric}]
+    [#{tags := RTags, time := RTime, value := RValue, metric := RMetric, hpts := RHPTS}]
         = p(In),
     ?assertEqual(Tags, RTags),
     ?assertEqual(Time, RTime),
+    ?assertEqual(Time, erlang:convert_time_unit(RHPTS, nanosecond, second)),
     ?assertEqual(Value, RValue),
     ?assertEqual(Metric, RMetric).
 
@@ -347,6 +350,7 @@ multi_test() ->
     In = <<"cpu,hostname=host_0,rack=67,os=Ubuntu16.1 "
            "usage_user=58.1317132304976170,io_time=0i "
            "1451606400000000000">>,
+    HPTS = 1451606400000000000,
     Time = 1451606400,
     Value1 = 0,
     Value2 = 58.1317132304976170,
@@ -355,8 +359,8 @@ multi_test() ->
     Tags = [{<<>>, <<"hostname">>, <<"host_0">>},
             {<<>>, <<"os">>, <<"Ubuntu16.1">>},
             {<<>>, <<"rack">>, <<"67">>}],
-    [#{tags := RTags1, time := RTime1, value := RValue1, metric := RMetric1},
-     #{tags := RTags2, time := RTime2, value := RValue2, metric := RMetric2}]
+    [#{tags := RTags1, time := RTime1, value := RValue1, metric := RMetric1, hpts := HPTS},
+     #{tags := RTags2, time := RTime2, value := RValue2, metric := RMetric2, hpts := HPTS}]
         = p(In),
     ?assertEqual(Tags,    RTags1),
     ?assertEqual(Time,    RTime1),
